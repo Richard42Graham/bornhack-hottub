@@ -5,8 +5,8 @@
 #include <ESP8266mDNS.h>
 #include "http.h"
 #define Addr 0x48
-int cTemp;
-int records[1000];
+float cTemp;
+float records[1000];
 ESP8266WebServer server(80);
 
 void handleRoot() {
@@ -88,7 +88,7 @@ server.on("/data", HTTP_OPTIONS, []() {
 }
 int lastUpdate = 0;
 void loop() {
-  if (lastUpdate + 1000 < millis()) {
+  if (lastUpdate + 20000 < millis()) {
     lastUpdate = millis();
     unsigned data[2];
     // Start I2C Transmission
@@ -114,7 +114,7 @@ void loop() {
       temp -= 4096;
     }
     cTemp = temp * 0.0625;
-    memcpy(records, &records[1], sizeof(records) - sizeof(int));
+    memcpy(records, &records[1], sizeof(records) - sizeof(float));
     if(cTemp == 16767440){
       cTemp = 0;
     }
