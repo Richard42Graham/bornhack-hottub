@@ -5,19 +5,18 @@
 #include <ESP8266mDNS.h>
 #include "http.h"
 #define Addr 0x48
-int cTemp;
-int records[100];
+float cTemp;
+float records[1000];
 ESP8266WebServer server(80);
 
-String c1 = "<html>\r\n<head><style>.bar{background-color:#000;color:#fff;display:inline-block;width:1%;position:fixed;bottom:0}.barHold{width:1%;display:inline-block}#bars{height:100%;width:100%}body,html{height:100%;width:100%;margin:0;padding:0}</style></head><body>\r\n<div id=\"bars\">\r\n</div><script>setInterval(async function (){\r\n  let resp = await fetch(\"/data\")\r\n  let values = await resp.json();\r\nlet min = 0;\r\nlet max = values.reduce((acu, val) => (val > acu ? val : acu), 0);\r\nlet el = document.getElementById(\"bars\");\r\n  el.innerHTML = \"\";\r\nfor (let val of values) {\r\n  let bar = document.createElement(\"div\");\r\n  bar.classList += \"bar\";\r\n  bar.innerText = val;\r\n  bar.style.height = (val - min) / (max - min) * 100 + \"%\";\r\n  let barHold = document.createElement(\"div\");\r\n  barHold.classList += \"barHold\";\r\n  barHold.appendChild(bar);\r\n  el.appendChild(barHold);\r\n}\r\n},1000)\r\n</script>\r\n</head>\r\n</body>\r\n</html>";
 void handleRoot() {
-  server.send(200, "text/html",c1);
+  server.send(200, "text/html","Hey you found me dashboard @ https://richard42graham.github.io/bornhack-hottub or /data");
 }
 void handleData() {
   String output ="[";
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 1000; i++) {
       output.concat(records[i]);
-      if(i != 99){
+      if(i != 999){
         output.concat(",");
       }
     }
@@ -89,7 +88,7 @@ server.on("/data", HTTP_OPTIONS, []() {
 }
 int lastUpdate = 0;
 void loop() {
-  if (lastUpdate + 1000 < millis()) {
+  if (lastUpdate + 20000 < millis()) {
     lastUpdate = millis();
     unsigned data[2];
     // Start I2C Transmission
@@ -115,11 +114,11 @@ void loop() {
       temp -= 4096;
     }
     cTemp = temp * 0.0625;
-    memcpy(records, &records[1], sizeof(records) - sizeof(int));
+    memcpy(records, &records[1], sizeof(records) - sizeof(float));
     if(cTemp == 16767440){
       cTemp = 0;
     }
-    records[99] =  cTemp;
+    records[999] =  cTemp;
     // Output data to serial monitor
     Serial.print("Temperature in Celsius:  ");
     Serial.print(cTemp);
