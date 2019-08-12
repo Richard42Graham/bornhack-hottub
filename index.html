@@ -1,17 +1,17 @@
 <html>
 
 <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
         .bar {
-            background-color: #000;
+            background-color: #ff6600;
             color: #fff;
             display: inline-block;
-            width: 1%;
             position: fixed;
             bottom: 0
         }
         .barHold {
-            width: 1%;
             display: inline-block
         }
         #bars {
@@ -19,51 +19,104 @@
             width: 100%
         }
         #max{
-            background-color: #000;
-            color: #fff;
             position: fixed;
             top:0px;
             left: 0px;
+            font-size: 2em;
         }
         #min{
-            background-color: #000;
-            color: #fff;
             position: fixed;
             bottom:0px;
             left: 0px;
+            z-index: 9999;
+            font-size: 2em;
+        }
+        #current {
+            right: 0px;
+            padding: 4px;
+            top:0px;
+            position: fixed;
+            font-size: 2em;
+        }
+        #cons{
+            right: 0px;
+            padding: 4px;
+            bottom:0px;
+            position: fixed;
+            font-size: 2em;
         }
         body,
         html {
             height: 100%;
             width: 100%;
             margin: 0;
-            padding: 0
+            padding: 0;
+            color: #fff;
+            background-color: #000;
+        }
+        #error{
+            position: fixed;
+            top:calc(10% - 16px);
+            left:calc(10% - 16px);
+            border-color: #ff6600;
+            border-width: 16px;
+            border-style: solid;
+            background-color: #000;
+            height: 80%;
+            width: 80%;
+            font-size: 3em;
+            display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    text-align: center;
+        }
+        .hidden{
+            display: none!important;
         }
     </style>
 </head>
 <body>
-    <div id="max"><h1>50</h1></div>
-    <div id="min"><h1>0</h1></div>
-    <div id="bars">
-    </div>
-    <script>setInterval(async function () {
+        <div id="bars">
+        </div>
+    <div id="max">50°C</div>
+    <div id="min">0°C</div>
+    <div id="cons"><a onclick="event.preventDefault(); disp=30*3; update();" href="#">30Min</a>, <a onclick="event.preventDefault(); disp=60*3; update();" href="#">1Hour</a>, <a onclick="event.preventDefault(); disp=5*60*3; update();" href="#">5Hour</a></div>
+
+    <div id="current"></div>
+    <div id="error" class="hidden">Cant load data</div>
+
+    <script>
+    var disp = 30*3;
+    async function update() {
+        try {
             let resp = await fetch("https://data-bornhack-hothub.f-t.win/data")
             let values = await resp.json();
             let min = 0;
             let max = 50;
             let el = document.getElementById("bars");
             el.innerHTML = "";
-            for (let val of values) {
+            for (let val of values.slice(0-disp)) {
                 let bar = document.createElement("div");
                 bar.classList += "bar";
-                bar.innerText = val;
+                bar.style.width = (100/disp)+"%";
                 bar.style.height = (val - min) / (max - min) * 100 + "%";
                 let barHold = document.createElement("div");
                 barHold.classList += "barHold";
+                barHold.style.width = (100/disp)+"%";
+
                 barHold.appendChild(bar);
                 el.appendChild(barHold);
             }
-        }, 1000)
+            document.getElementById("current").innerText = "Current:"+values[values.length-1]+"°C"
+            document.getElementById("error").classList.toggle("hidden",true);
+        } catch (error) {
+            console.log(error)
+            document.getElementById("error").classList.toggle("hidden",false);
+        }
+        }
+    setInterval(update, 10000)
+    update()
     </script>
     </head>
 </body>
