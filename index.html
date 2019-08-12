@@ -1,0 +1,70 @@
+<html>
+
+<head>
+    <style>
+        .bar {
+            background-color: #000;
+            color: #fff;
+            display: inline-block;
+            width: 1%;
+            position: fixed;
+            bottom: 0
+        }
+        .barHold {
+            width: 1%;
+            display: inline-block
+        }
+        #bars {
+            height: 100%;
+            width: 100%
+        }
+        #max{
+            background-color: #000;
+            color: #fff;
+            position: fixed;
+            top:0px;
+            left: 0px;
+        }
+        #min{
+            background-color: #000;
+            color: #fff;
+            position: fixed;
+            bottom:0px;
+            left: 0px;
+        }
+        body,
+        html {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0
+        }
+    </style>
+</head>
+<body>
+    <div id="max"><h1>50</h1></div>
+    <div id="min"><h1>0</h1></div>
+    <div id="bars">
+    </div>
+    <script>setInterval(async function () {
+            let resp = await fetch("http://151.216.11.84/data")
+            let values = await resp.json();
+            let min = 0;
+            let max = 50;
+            let el = document.getElementById("bars");
+            el.innerHTML = "";
+            for (let val of values) {
+                let bar = document.createElement("div");
+                bar.classList += "bar";
+                bar.innerText = val;
+                bar.style.height = (val - min) / (max - min) * 100 + "%";
+                let barHold = document.createElement("div");
+                barHold.classList += "barHold";
+                barHold.appendChild(bar);
+                el.appendChild(barHold);
+            }
+        }, 1000)
+    </script>
+    </head>
+</body>
+</html>
