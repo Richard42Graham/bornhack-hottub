@@ -1,5 +1,5 @@
 # bornhack hottub 
 
-a simple tempriture sensor wired by I2C to a ESP8266. 
-its for messuring the tempriture of the hot tub at bornhack,
-allowing any nerd with web acess to see when the tempritue is exactly right for them. 
+a simple temperature sensor wired by I2C to a ESP8266. 
+it's for measuring the temperature of the hot tub at bornhack,
+allowing any nerd with web access to see when the temperature is exactly right for them. 
