@@ -1,17 +1,23 @@
 #include <Wire.h>
 #include <ESP8266WiFi.h>
+#include <PubSubClient.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include "http.h"
 #define Addr 0x48
+const char* mqttServer = "test.mosquitto.org";
+const int mqttPort = 1883;
 float cTemp;
 float records[1000];
-ESP8266WebServer server(80);
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+ESP8266WebServer httpServer(80);
 
 void handleRoot() {
-  server.send(200, "text/html","Hey you found me dashboard @ https://richard42graham.github.io/bornhack-hottub or /data");
+  httpServer.send(200, "text/html","Hey you found me dashboard @ https://richard42graham.github.io/bornhack-hottub or /data");
 }
+
 void handleData() {
   String output ="[";
     for (int i = 0; i < 1000; i++) {
@@ -21,32 +27,37 @@ void handleData() {
       }
     }
     output.concat("]");
-        server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
-        server.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-                server.sendHeader("Access-Control-Allow-Origin", "*");
-
-
-
-  server.send(200, "application/json",output);
+    httpServer.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
+    httpServer.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    httpServer.sendHeader("Access-Control-Allow-Origin", "*");
+    httpServer.send(200, "application/json",output);
 }
+
 void handleNotFound() {
   String message = "File Not Found\n\n";
   message += "URI: ";
-  message += server.uri();
+  message += httpServer.uri();
   message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += (httpServer.method() == HTTP_GET) ? "GET" : "POST";
   message += "\nArguments: ";
-  message += server.args();
+  message += httpServer.args();
   message += "\n";
-  for (uint8_t i = 0; i < server.args(); i++) {
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  for (uint8_t i = 0; i < httpServer.args(); i++) {
+    message += " " + httpServer.argName(i) + ": " + httpServer.arg(i) + "\n";
   }
-  server.send(404, "text/plain", message);
+  httpServer.send(404, "text/plain", message);
 }
 
+
+bool mqttConnect(){
+  mqttClient.setServer(mqttServer, mqttPort);
+  return mqttClient.connect("ESP8266Client", "/dk/bornhack/hottub/status", 0, true, "0");
+}
+
+
 void setup() {
-    Serial.begin(115200);
-    
+  Serial.begin(115200);
+  Serial.println("We're starting up");
   // put your setup code here, to run once:
   pinMode(5, INPUT_PULLUP);
   pinMode(4, INPUT_PULLUP);
@@ -57,7 +68,6 @@ void setup() {
   Wire.write(0x60);
   Wire.write(0xA0);
   Wire.endTransmission();
-  
   delay(300);
   // Setup wifi
   WiFi.mode(WIFI_STA);
@@ -72,22 +82,42 @@ void setup() {
   if (MDNS.begin("the-tub")) {
     Serial.println("MDNS responder started");
   }
-server.on("/data", HTTP_OPTIONS, []() {
-    server.sendHeader("Access-Control-Max-Age", "10000");
-    server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
-    server.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-        server.sendHeader("Access-Control-Allow-Origin", "*");
 
-    server.send(200, "text/plain", "" );
+  
+  while (!mqttClient.connected()) {
+    Serial.println("Connecting to MQTT...");
+    if (mqttConnect()) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed with state ");
+      Serial.print(mqttClient.state());
+      delay(2000);
+      }
+    }
+
+
+  httpServer.on("/data", HTTP_OPTIONS, []() {
+    httpServer.sendHeader("Access-Control-Max-Age", "10000");
+    httpServer.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
+    httpServer.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    httpServer.sendHeader("Access-Control-Allow-Origin", "*");
+    httpServer.send(200, "text/plain", "" );
   });
-  server.on("/", handleRoot);
-    server.on("/data", handleData);
+  httpServer.on("/", handleRoot);
+  httpServer.on("/data", handleData);
 
-  server.onNotFound(handleNotFound);
-  server.begin();
+  httpServer.onNotFound(handleNotFound);
+  httpServer.begin();
 }
+
+
+
 int lastUpdate = 0;
 void loop() {
+  if (!mqttClient.connected()) {
+    mqttConnect();
+  }
+  mqttClient.loop();
   if (lastUpdate + 20000 < millis()) {
     lastUpdate = millis();
     unsigned data[2];
@@ -123,7 +153,22 @@ void loop() {
     Serial.print("Temperature in Celsius:  ");
     Serial.print(cTemp);
     Serial.println(" C");
-  }
-  server.handleClient();
 
+    // check if we're connected, try to reconnect once
+    if(!mqttClient.connected()) {
+      Serial.println("disconnected to mqtt, try to reconnect");
+      mqttConnect();
+    }
+
+    // check again, simply give up publishing if we're still not connected
+    // we'll retry after reading the next value anyhow
+    if(mqttClient.connected()){
+      Serial.println("connected to mqtt, publishing");
+      char buf[10];
+      sprintf(buf, "%.2f", cTemp);
+      mqttClient.publish("/dk/bornhack/hottub/water_temp", buf, true);
+      mqttClient.publish("/dk/bornhack/hottub/status", "1");
+    }
+  }
+  httpServer.handleClient();
 }
