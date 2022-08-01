@@ -39,6 +39,9 @@ byte addr3[8] = {0x28, 0xAA, 0x1F, 0xDD, 0x52, 0x14, 0x01, 0xBF}; // sensor 3
 float latest_temperature_1 = 0;
 float latest_temperature_2 = 0;
 float latest_temperature_3 = 0;
+float temperature_1_records[1000];
+float temperature_2_records[1000];
+float temperature_3_records[1000];
 
 unsigned long pool_frequency_ms = 5000;
 int temperature_acquisition_time_ms = 1000;
@@ -58,55 +61,37 @@ void handleRoot()
   httpServer.send(200, "text/html", "Hey you found me dashboard @ https://richard42graham.github.io/bornhack-hottub or /data");
 }
 
-void handle_temperature_1()
+void write_http_response(float[] records)
 {
   String output = "[";
-  output.concat(latest_temperature_1);
-  // for (int i = 0; i < 1000; i++) {
-  //   output.concat(records[i]);
-  //   if(i != 999){
-  //     output.concat(",");
-  //   }
-  // }
+  for (int i = 0; i < 1000; i++)
+  {
+    output.concat(records[i]);
+    if (i != 999)
+    {
+      output.concat(",");
+    }
+  }
   output.concat("]");
   httpServer.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
   httpServer.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   httpServer.sendHeader("Access-Control-Allow-Origin", "*");
   httpServer.send(200, "application/json", output);
+}
+
+void handle_temperature_1()
+{
+  write_http_response(temperature_1_records);
 }
 
 void handle_temperature_2()
 {
-  String output = "[";
-  output.concat(latest_temperature_2);
-  // for (int i = 0; i < 1000; i++) {
-  //   output.concat(records[i]);
-  //   if(i != 999){
-  //     output.concat(",");
-  //   }
-  // }
-  output.concat("]");
-  httpServer.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
-  httpServer.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  httpServer.sendHeader("Access-Control-Allow-Origin", "*");
-  httpServer.send(200, "application/json", output);
+  write_http_response(temperature_2_records);
 }
 
 void handle_temperature_3()
 {
-  String output = "[";
-  output.concat(latest_temperature_2);
-  // for (int i = 0; i < 1000; i++) {
-  //   output.concat(records[i]);
-  //   if(i != 999){
-  //     output.concat(",");
-  //   }
-  // }
-  output.concat("]");
-  httpServer.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
-  httpServer.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  httpServer.sendHeader("Access-Control-Allow-Origin", "*");
-  httpServer.send(200, "application/json", output);
+  write_http_response(temperature_3_records);
 }
 
 void handle_battery()
@@ -293,6 +278,7 @@ void loop(void)
     latest_temperature_2 = ReadTemperature(addr2);
     latest_temperature_3 = ReadTemperature(addr3);
 
+
     Serial.print("temperature1: ");
     Serial.print(latest_temperature_1);
     Serial.print(", temperature2: ");
@@ -300,17 +286,27 @@ void loop(void)
     Serial.print(", temperature3: ");
     Serial.print(latest_temperature_3);
     Serial.println(" ");
+
+    memcpy(temperature_1_records, &temperature_1_records[1], sizeof(temperature_1_records) - sizeof(float));
+    memcpy(temperature_2_records, &temperature_2_records[1], sizeof(temperature_2_records) - sizeof(float));
+    memcpy(temperature_3_records, &temperature_3_records[1], sizeof(temperature_3_records) - sizeof(float));
+    temperature_1_records[999] =  latest_temperature_1;
+    temperature_2_records[999] =  latest_temperature_2;
+    temperature_3_records[999] =  latest_temperature_3;
+
     have_read_temperature = true;
 
     // check if we're connected to MQTT, try to reconnect once
-    if(!mqttClient.connected()) {
+    if (!mqttClient.connected())
+    {
       Serial.println("disconnected to mqtt, try to reconnect");
       mqttConnect();
     }
 
     // check again, simply give up publishing if we're still not connected
     // we'll retry after reading the next value anyhow
-    if(mqttClient.connected()){
+    if (mqttClient.connected())
+    {
       Serial.println("connected to mqtt, publishing");
       char buf[10];
       sprintf(buf, "%.2f", latest_temperature_1);
