@@ -144,5 +144,6 @@ void loop(void)
     Serial.print(", temperature3: ");
     Serial.print(temperature3);
     Serial.println(" ");
+    have_read_temperature = true;
   }
 }
