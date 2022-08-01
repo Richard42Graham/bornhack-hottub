@@ -206,7 +206,7 @@ void setup(void)
   // Wifi
   // Setup wifi
   WiFi.mode(WIFI_STA);
-  WiFi.begin("SSID", "Password");
+  WiFi.begin("bornhack");
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
