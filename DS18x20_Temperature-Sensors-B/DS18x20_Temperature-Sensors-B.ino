@@ -138,11 +138,11 @@ void ReadBattery()
   battery_level = map(battery_voltage, 3.3, 4.3, 5, 100); // calculate battery "level by mapping the voltage"
   //  map(long x, long in_min, long in_max, long out_min, long out_max)
 
-  Serial.print("battery voltage = "); // show battery voltage
+  Serial.print("Battery voltage = "); // show battery voltage
   Serial.print(battery_voltage);
   Serial.println(" ");
 
-  Serial.print("battery level = "); // show battery levle
+  Serial.print("Battery level = "); // show battery levle
   Serial.print(battery_level);
   Serial.println("% ");
 }
@@ -237,6 +237,7 @@ void setup(void)
 
 void loop(void)
 {
+  httpServer.handleClient();
 
   if (last_poll_time + pool_frequency_ms < millis())
   {
@@ -253,21 +254,20 @@ void loop(void)
 
   if (!have_read_temperature && temperature_start_read_time + temperature_acquisition_time_ms < millis())
   {
+    ReadBattery();
+
     // Reads the temperature
-    float temperature1 = ReadTemperature(addr1);
-    float temperature2 = ReadTemperature(addr2);
-    float temperature3 = ReadTemperature(addr3);
+    latest_temperature_1 = ReadTemperature(addr1);
+    latest_temperature_2 = ReadTemperature(addr2);
+    latest_temperature_3 = ReadTemperature(addr3);
 
     Serial.print("temperature1: ");
-    Serial.print(temperature1);
+    Serial.print(latest_temperature_1);
     Serial.print(", temperature2: ");
-    Serial.print(temperature2);
+    Serial.print(latest_temperature_2);
     Serial.print(", temperature3: ");
-    Serial.print(temperature3);
+    Serial.print(latest_temperature_3);
     Serial.println(" ");
-    latest_temperature_1 = temperature1;
-    latest_temperature_2 = temperature2;
-    latest_temperature_3 = temperature3;
     have_read_temperature = true;
   }
 }
