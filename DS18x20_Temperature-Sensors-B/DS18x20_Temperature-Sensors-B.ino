@@ -61,7 +61,7 @@ void handleRoot()
   httpServer.send(200, "text/html", "Hey you found me dashboard @ https://richard42graham.github.io/bornhack-hottub or /data");
 }
 
-void write_http_response(float[] records)
+void write_http_response(float* records)
 {
   String output = "[";
   for (int i = 0; i < 1000; i++)
